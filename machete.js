@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2012 Philipp Melab
+ *
+ * Permission is hereby granted, free of charge, to any person
+ * obtaining a copy of this software and associated documentation
+ * files (the "Software"), to deal in the Software without restriction,
+ * including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software,
+ * and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+ * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 (function ($) {
   // Mexico object setup
   root = this;
@@ -13,7 +35,7 @@
     $.mobile.buttonMarkup.hoverDelay = 0;
 
     // default configure header and toolbars to be fixed
-    $.mobile.fixedtoolbar.prototype.options.updatePageHeading = false;
+    $.mobile.fixedtoolbar.prototype.options.updatePagePadding = false;
     $.mobile.fixedtoolbar.prototype.options.transition = 'none';
     $.mobile.fixedtoolbar.prototype.options.initSelector = ':jqmData(role="header"), :jqmData(role="footer")';
   });
@@ -35,7 +57,7 @@
     transitioning = true;
   });
   $(document).bind('pageshow', function(event, ui){
-    $("[data-position='fixed']").fixedtoolbar('show');
+    $('[data-role="header", data-role="footer"]').fixedtoolbar('show');
     transitioning = false;
   });
 
@@ -196,7 +218,6 @@
     return templates[mustache].render(data);
   };
 
-
   /**
    * Main Class for jQuery-Mobile pages. Handles appearing and
    * disposing, dom caching, transition click handling and
@@ -246,6 +267,11 @@
      * Makes Machete appear. Also adds equipment and handles dom-caching.
      */
     appear: function(options) {
+      var options = _.extend({
+        transition: transition,
+        reverse: reverse,
+        pageContainer: $.mobile.pageContainer
+      }, options);
       // get the current fragment
       var fragment = Backbone.history.fragment;
       // set boots to active fragment
@@ -273,29 +299,23 @@
         $('a', this.$el).click(this.handleClick);
         $('body').append(this.$el);
       }
-      if (typeof options === 'undefined') {
-        options = {};
-      }
-      options.transition = transition;
-      options.reverse = reverse;
-      options.pageContainer = $.mobile.pageContainer;
-
-      if (stackindex > 0 && stack[stackindex - 1] === fragment) {
+      if (stackindex > 0 && stack[stackindex - 1].fragment === fragment) {
         // new fragment points exactly one page back
+        transition = stack[stackindex - 1].transition;
         stackindex--;
         options.reverse = !options.reverse;
       } else if (stackindex < stack.length - 1 && stack[stackindex + 1] === fragment) {
         // new fragment points to the last visited page (forward)
+        transition = stack[stackindex + 1].transition;
         stackindex++;
       } else if (!(stackindex == stack.length - 1 && stack[stackindex - 1] === fragment)) {
         // completely new page, chop head of stack 
         stackindex++;
         stack = stack.slice(0, stackindex);
-        stack.push(Backbone.history.fragment);
+        stack.push({fragment: Backbone.history.fragment, transition: transition});
       }
 
       // adjust header and footer to be fixed and persistent
-      // TODO: make configurable
       $('div[data-role="header"]', this.$el).attr('data-id', 'machete-bandana');
       $('div[data-role="footer"]', this.$el).attr('data-id', 'machete-boots');
       this.$el.Machete = this;
@@ -336,6 +356,23 @@
     }
   });
   
+  /**
+   * Tells Backbone to navigate to another page.
+   * @param options object
+   *   "transition" and "reverse" fields are used for jqmobile transitions,
+   *   everything else is passed over to backbone.
+   */
+  Mexico.navigate = function(fragment, options) {
+    options.trigger = true;
+    if (options.hasOwnProperty('transition')) {
+      transition = options.transition;
+    }
+    if (options.hasOwnProperty('reverse')) {
+      reverse = options.reverse;
+    }
+    Backbone.history.navigate(fragment, options);
+  };
+
   // set up the pardre to enable scouting
   pardre = new Pardre();
 
