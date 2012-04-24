@@ -22,37 +22,67 @@
  */
 (function ($) {
   // Mexico object setup
-  root = this;
-  Mexico = {};
+  var root = this;
+  var Mexico = {};
+  root.Mexico = Mexico;
+
+  // noConflict
+  var previousMexico = root.Mexico;
+  Mexico.noConflict = function() {
+    root.Mexico = previousMexico;
+    return Mexico;
+  };
+
+  // Machete plugin handling
   Mexico.equipment = {};
 
+  // bind mobileinit and reconfigure jquery mobile defaults
   $(document).bind('mobileinit', function() {
     // Disable jQuery Mobile link and ajax handling
-    $.mobile.ajaxEnabled = false;
-    $.mobile.linkBindingEnabled = false;
-    $.mobile.hashListeningEnabled = false;
-    $.mobile.pushStateEnabled = false;
+    $.extend($.mobile, {
+      ajaxEnabled: false,
+      linkBindingEnabled: false,
+      hashListeningEnabled: false,
+      pushStateEnabled: false
+    });
     $.mobile.buttonMarkup.hoverDelay = 0;
 
     // default configure header and toolbars to be fixed
-    $.mobile.fixedtoolbar.prototype.options.updatePagePadding = false;
-    $.mobile.fixedtoolbar.prototype.options.transition = 'none';
-    $.mobile.fixedtoolbar.prototype.options.initSelector = ':jqmData(role="header"), :jqmData(role="footer")';
+    $.extend($.mobile.fixedtoolbar.prototype.options, {
+      updatePagePadding: false,
+      transition: 'none',
+      initSelector: ':jqmData(role="header"), :jqmData(role="footer")'
+    });
   });
 
   // Global store for transition/direction data caught from click events
-  transition = false;
-  reverse = false;
+  var transition = false;
+  var reverse = false;
 
-  // template cache
-  templates = {};
-
-  // movement stack, used for correct forward/backward handling
-  stack = [];
-  stackindex = -1;
-
+  /**
+   * Handle all click events to provide jQuery mobile standard functionality.
+   */
+  $('a').live('click', function (event) {
+    if (transitioning) {
+      event.preventDefault();
+      return false;
+    }
+    var target = $(event.currentTarget);
+    if (target.jqmData('rel') === 'back') {
+      history.back();
+      event.preventDefault();
+      return false;
+    }
+    if (!target.attr('href') || target.attr('href') === '#') {
+      return;
+    }
+    else {
+      transition = target.jqmData('transition');
+      reverse = target.jqmData('direction') === 'reverse';
+    }
+  });
   // block links while page transitions
-  transitioning = false;
+  var transitioning = false;
   $(document).bind('pagebeforeshow', function(){
     transitioning = true;
   });
@@ -61,244 +91,162 @@
     transitioning = false;
   });
 
+  // used to split property-targeted events
+  var delegatePropertyEventSplitter = /^(\S+)\s*@(.*)$/
+
+
+  // mustache template cache
+  var templates = {};
+
   /**
-   * Helper function to convert a JSON object into a
-   * Mustache-compatible object -> simple arrays are
-   * convertet into objects with one property "collection"
-   * which holds the array.
+   * Base class for Mexicans.
    */
-  mustachify = function (value) {
-    var i;
-    if (_.isArray(value)) {
-      for (i = 0; i < value.length; i++) {
-        value[i] = mustachify(value[i]);
-      }
-      value = { collection: value };
-    }
-    else if (_.isObject(value)) {
-      for (i = 0; i < value.length; i++) {
-        if ((_.isArray(value[i])) || (_.isObject(value[i]))) {
-          value[i] = mustachify(value[i]);
+  Mexico.Mexican = Backbone.View.extend({
+    mustache: false,
+    _ensureElement: function() {
+      if (this.mustache) {
+        // if there is a mustache, use it as backbone base element ...
+        if (!_.has(templates, this.mustache)) {
+          if (this.mustache.match(/.*\.mustache/)) {
+            templates[this.mustache] = Hogan.compile($.ajax({
+              url: this.mustache,
+              async: false
+            }).responseText);
+          }
+          else {
+            templates[this.mustache] = Hogan.compile(this.mustache);
+          }
         }
-      }
-    }
-    else {
-      value = { item: value };
-    }
-    return value;
-  };
-
-  /**
-   * Base class for Machete's Equipment, that means resuable
-   * parts on pages.
-   */
-  Mexico.Equipment = Backbone.View.extend({
-    /**
-     * Clean up event bindings. Equipment added to pages
-     * is cleaned up and deleted automatically.
-     */
-    cleanup: function() {
-      // clean up event bindings here ...
-    }
-  });
-
-  /**
-   * Simple Model storing Application Tabs.
-   */
-  Boot = Backbone.Model.extend({
-    icon: false,
-    text: 'Boot',
-    route: '#',
-    active: true
-  });
-
-  /**
-   * Boots collection. Stores "Boots" (Application Tabs).
-   * Use ... 
-   * Mexico.boots.addBoot({
-   *   text: [tab-text],
-   *   icon: [tab-icon],
-   *   route: [route (without the hash)]
-   * });
-   * ... to add new routes.
-   * TODO: Handle runtime modified routes.
-   */
-  var Boots = Backbone.Collection.extend({
-    /**
-     * Takes an fragment and tests all boots in collection if they point there.
-     * If one matches, it will be set active and all others inactive.
-     * If none matches, nothing happens.
-     */
-    setActive: function(fragment) {
-      if (this.any(function(boot) { return (boot.get('route') === fragment); })) {
-        this.each(function(boot) {
-          boot.set('active', (boot.get('route') === fragment));
-        });
-      }
-    },
-    /**
-     * Add a boot to Machete's shoecase.
-     */
-    addBoot: function(configuration) {
-      this.add(new Boot(configuration));
-    },
-  });
-
-  // Global instance of boots-collection
-  Mexico.boots = new Boots();
-
-  /**
-   * Register boots in equipment rooster. Every equipment has to be a
-   * Class extending Mexico.Equipment. Use <div data-equipment="[boots]"/>
-   * to include it.
-   */
-  Mexico.equipment.boots = Mexico.Equipment.extend({
-    boots: [],
-    collection: Mexico.boots,
-    render: function() {
-      this.$el = $('<div data-role="footer"><div data-role="navbar"><ul></ul></div></div>');
-      var list = $('ul', this.$el);
-      var that = this;
-      this.collection.each(function(model) {
-        var boot = new BootDisplay({model: model});
-        that.boots.push(boot);
-        list.append(boot.render().$el);
-      });
-      return this;
-    },
-    cleanup: function() {
-      _.each(this.boot, function(boot) {
-        boot.cleanup();
-        delete boot;
-      });
-    }
-  });
-
-  /**
-   * Bootdisplay, rendering one boot and listening to active-changes.
-   */
-  BootDisplay = Mexico.Equipment.extend({
-    initialize: function() {
-      _.bindAll(this);
-      this.model.on('change:active', this.refreshActive);
-    },
-    render: function() {
-      this.$el = $('<li><a href="#' + this.model.get('route') + '">'
-                   + this.model.get('text') + '</a></li>');
-      if (this.model.get('active')) {
-        $('a', this.$el).addClass('ui-btn-active');
-      }
-      return this;
-    },
-    refreshActive: function() {
-      if (this.model.get('active')) {
-        $('a', this.$el).addClass('ui-btn-active');
+        // and apply if the mexican has a model, use it to fill in data.
+        var data = {};
+        if (_.has(this, 'model')) {
+          data = this.model.toJSON();
+          if (!_.has(data, 'cid')) {
+            data.cid = this.model.cid;
+          }
+        }
+        // call backbone.setElement
+        this.setElement(templates[this.mustache].render(data), false);
+        this.el.Mexican = this;
+        $(this.el).addClass('mexican');
       }
       else {
-        $('a', this.$el).removeClass('ui-btn-active');
+        Backbone.View.prototype._ensureElement.call(this);
       }
     },
-    cleanup: function() {
-      this.model.unbind('change:active', this.refreshActive);
+
+    delegateEvents: function (events) {
+      if (this.delegated) {
+        return;
+      }
+      Backbone.View.prototype.delegateEvents.call(this, events);
+      if (!(events || (events = this.events))) {
+        return;
+      }
+      for (var key in events) {
+        var method = events[key];
+        if (!_.isFunction(method)) {
+          method = this[events[key]];
+        }
+        if (!method) {
+          throw new Error('Method "' + events[key] + '" does not exist');
+        }
+        var match = key.match(delegatePropertyEventSplitter);
+        if (!match) {
+          continue;
+        }
+        var property = match[2];
+        var event = match[1];
+        if (!_.has(this, property)) { 
+          throw new Error('Property "' + events[key] + '" does not exist');
+        }
+        method = _.bind(method, this);
+        this.delegatedPropertyEvents.push({
+          property: property,
+          event: event,
+          method: method
+        });
+        this[property].on(event, method);
+      }
+    },
+
+    undelegateEvents: function () {
+      Backbone.View.prototype.undelegateEvents.call(this);
+      var delegation = null;
+      if (!this.delegatedPropertyEvents) {
+        this.delegatedPropertyEvents = [];
+      }
+      while(delegation = this.delegatedPropertyEvents.pop()) {
+        this[delegation.property].unbind(delegation.event, delegation.method);
+      }
+    },
+
+    /**
+     *
+     */
+    eliminate: function() {
+      this.undelegateEvents();
     }
   });
 
-  /**
-   * Helper function to grow a mustache - combine a template file
-   * with a Backbone-Model.
-   */
-  Mexico.growMustache = function(mustache, data) {
-    if (!templates.hasOwnProperty(mustache)) {
-      templates[mustache] = Hogan.compile($.ajax({
-        url: mustache,
-        async: false
-      }).responseText);
-    }
-    data = mustachify(data);
-    return templates[mustache].render(data);
-  };
+  // movement stack, used for correct forward/backward handling
+  var stack = [];
+  stackindex = -1;
 
   /**
    * Main Class for jQuery-Mobile pages. Handles appearing and
    * disposing, dom caching, transition click handling and
    * many more!
    */
-  Mexico.Machete = Backbone.View.extend({
+  Mexico.Machete = Mexico.Mexican.extend({
 
-    // equipment machete is carrying
-    equipment: {},
-
-    // initalize - set up root element
-    initialize: function() {
-      this.$el = $('<div data-role="page"></div>');
-    },
-
-    // default rendering
-    render: function() {
-      this.$el.append('<div data-role="header"><h1>Machete!</h1></div>');
-      return this;
-    },
-
-    /**
-     * handles all clicks on "a" elements to provide jQuery-Mobile
-     * functionality of data-transition, data-direction and data-rel="back".
-     */
-    handleClick: function (event) {
-      if (transitioning) {
-        event.preventDefault();
-        return false;
-      }
-      var target = $(event.currentTarget);
-      if (target.jqmData('rel') === 'back') {
-        history.back();
-        event.preventDefault();
-        return false;
-      }
-      if (!target.attr('href') || target.attr('href') === '#') {
-        return;
+    _ensureElement: function() {
+      var fragment = Backbone.history.fragment;
+      if ($('div:jqmData(url="' + fragment + '")').length > 0) {
+        this.setElement($('div:jqmData(url="' + fragment + '")'), false);
+        this.delegated = true;
       }
       else {
-        transition = target.jqmData('transition');
-        reverse = target.jqmData('direction') === 'reverse';
+        Mexico.Mexican.prototype._ensureElement.call(this);
+        $.mobile.pageContainer.append(this.el);
+        this.render();
+        // get the current fragment
+        var fragment = Backbone.history.fragment;
+        // check if page with data-url already exists in the dom ...
+        Mexico.Mexican.prototype.initialize.call(this);
+        var that = this;
+        if (!this.equipment) {
+          this.equipment = {};
+        }
+        // distribute equipment
+        $('div[data-equipment]', $(this.el)).each(function() {
+          var equipment = $(this).attr('data-equipment');
+          that.equipment[equipment] = new Mexico.equipment[equipment];
+          if (_.has(Mexico.equipment, equipment)) {
+            $(this).replaceWith(that.equipment[equipment].el);
+          }
+        });
+
+        if (this.options.persist) {
+          $(this.el).attr('data-dom-cache', 'true');
+        }
+
+        // adjust header and footer to be persistent
+        $('div[data-role="header"]', this.el).attr('data-id', 'machete-bandana');
+        $('div[data-role="footer"]', this.el).attr('data-id', 'machete-boots');
       }
     },
 
     /**
-     * Makes Machete appear. Also adds equipment and handles dom-caching.
+     * Makes Machete appear.
      */
     appear: function(options) {
       var options = _.extend({
         transition: transition,
-        reverse: reverse,
-        pageContainer: $.mobile.pageContainer
+        reverse: reverse
       }, options);
-      // get the current fragment
+      // transition stack handling
       var fragment = Backbone.history.fragment;
-      // set boots to active fragment
-      Mexico.boots.setActive(fragment);
-
-      // check if page with data-url already exists in the dom ...
-      if ($('div:jqmData(url="' + fragment + '")').length > 0) {
-        this.$el = $('div:jqmData(url="' + fragment + '")');
-      }
-      // ... else render it
-      else {
-        this.render();
-        this.$el.attr('data-url', fragment);
-        if (this.options.persist) {
-          this.$el.attr('data-dom-cache', true);
-        }
-        var that = this;
-        $('div[data-equipment]', this.$el).each(function() {
-          var equipment = $(this).attr('data-equipment');
-          that.equipment[equipment] = new Mexico.equipment[equipment];
-          if (Mexico.equipment.hasOwnProperty(equipment)) {
-            $(this).replaceWith(that.equipment[equipment].render().$el);
-          }
-        });
-        $('a', this.$el).click(this.handleClick);
-        $('body').append(this.$el);
-      }
       if (stackindex > 0 && stack[stackindex - 1].fragment === fragment) {
         // new fragment points exactly one page back
         transition = stack[stackindex - 1].transition;
@@ -314,29 +262,21 @@
         stack = stack.slice(0, stackindex);
         stack.push({fragment: Backbone.history.fragment, transition: transition});
       }
-
-      // adjust header and footer to be fixed and persistent
-      $('div[data-role="header"]', this.$el).attr('data-id', 'machete-bandana');
-      $('div[data-role="footer"]', this.$el).attr('data-id', 'machete-boots');
-      this.$el.Machete = this;
-      $.mobile.changePage(this.$el, options);
+      $.mobile.changePage($(this.el), options);
     },
 
-    /**
-     * Tells Machete to throw away equipment the moment he dissapears.
-     * If overridden don't forget to call:
-     * Mexico.Machete.prototype.cleanup.call(this);
-     */
-    cleanup: function() {
+    eliminate: function() {
       // Clean up events bindings here ...
-      // and don't forget to call super.dissapear!
       _.each(this.equipment, function(equipment){
-        equipment.cleanup();
-        delete equipment;
+        equipment.eliminate();
       });
+      // call super eliminate to clear bindings
+      Mexico.Mexican.prototype.eliminate.call(this);
     }
   });
 
+  // sets the scout to "machete", you will want to override this
+  Mexico.scout = 'machete';
   /**
    * Base Router, pointing to the "scout", the initial page,
    * if no hash is provided.
@@ -351,7 +291,6 @@
     },
     machete: function() {
       var machete = new Mexico.Machete();
-      machete.render();
       machete.appear();
     }
   });
@@ -363,11 +302,14 @@
    *   everything else is passed over to backbone.
    */
   Mexico.navigate = function(fragment, options) {
+    if (!options) {
+      options = {};
+    }
     options.trigger = true;
-    if (options.hasOwnProperty('transition')) {
+    if (_.has(options, 'transition')) {
       transition = options.transition;
     }
-    if (options.hasOwnProperty('reverse')) {
+    if (_.has(options, 'reverse')) {
       reverse = options.reverse;
     }
     Backbone.history.navigate(fragment, options);
@@ -376,8 +318,6 @@
   // set up the pardre to enable scouting
   pardre = new Pardre();
 
-  // sets the scout to "machete", you will want to override this
-  Mexico.scout = 'machete';
 
   // Delay application start until all resources have been loaded
   $(window).load(function() {
@@ -387,14 +327,39 @@
   // Delete unused pages if they are not marked as dom-cached
   $(document).bind('pageshow', function(event, ui) {
     if ($(ui.prevPage).attr('data-dom-cache') !== 'true') {
-      if (typeof ui.prevPage.Machete !== 'undefined') {
-        ui.prevPage.Machete.cleanup();
-        delete ui.prevPage.Machete;
-      }
       ui.prevPage.remove();
     }
   });
 
-  // set global Mexico variable
-  root.Mexico = Mexico;
+  // ======================================================================
+  // MACHETE JQUERY DOM MANIPULATION OVERRIDES
+  // ======================================================================
+  // override jquery methods which delete elements to trigger proper cleanup
+  // behavior
+  _eliminateElement = function (elem) {
+    if (_(elem[0]).isObject() && _(elem[0]).has('Mexican')) {
+      elem[0].Mexican.eliminate();
+    }
+    $('.mexican', elem).each(function(){
+      this[0].Mexican.eliminate();
+    });
+  };
+
+  var macheteRemove = $.fn.remove;
+  $.fn.remove = function (selector, keepData) {
+    _eliminateElement(this);
+    macheteRemove.call(this, selector, keepData);
+  };
+
+  var macheteEmpty = $.fn.remove;
+  $.fn.remove = function () {
+    _eliminateElement(this);
+    macheteEmpty.call(this);
+  };
+
+  var macheteReplaceWith = $.fn.remove;
+  $.fn.remove = function (value) {
+    _eliminateElement(this);
+    macheteReplaceWith.call(this, value);
+  };
 }(jQuery));
