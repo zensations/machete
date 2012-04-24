@@ -6,14 +6,14 @@ class TodoItem extends Backbone.Model
   done: false
   archived: false
 
-class TodoItems extends Backbone.Collection
-  model: TodoItem
-  localStorage: new Backbone.LocalStorage 'items'
-
 class TodoList extends Backbone.Model
   name: 'My List'
   initialize: ->
-    @items = new TodoItems
+    id = @get('name')
+    class Store extends Backbone.Collection
+      mode: TodoList
+      localStorage: new Backbone.LocalStorage('list-' + id)
+    @items = new Store
     @items.fetch()
 
 class TodoLists extends Backbone.Collection
@@ -28,7 +28,8 @@ class TodoListsView extends Mexico.Machete
 
   render: ->
     @collection.each (list) =>
-      @$('.lists').append (new TodoListsItem(model: list)).el
+      @$('.lists').append (new TodoListsItem(model: list)).render().el
+    return this
 
   events:
     'click .add-list': 'addList'
@@ -44,11 +45,13 @@ class TodoListsView extends Mexico.Machete
     return false
 
   listAdded: (list, collection) ->
-    @$('.lists').append (new TodoListsItem(model: list)).el
+    @$('.lists').append (new TodoListsItem(model: list)).render().el
     @$('.lists').listview('refresh')
 
   listRemoved: (list, collection) ->
-    @$('.lists').listview('refresh')
+    @$('.lists').empty()
+    @render()
+    $(@el).trigger('create')
 
 
 class TodoListsItem extends Mexico.Mexican
@@ -71,14 +74,18 @@ class TodoListView extends Mexico.Machete
 
   render: ->
     @model.items.each (item) =>
-      @$('.items').append (new TodoListItem model: item).el
+      @$('.items').append (new TodoListItem model: item).render().el
+    return this
 
   events:
     'click .remove-list': 'removeList'
     'click .add-item': 'addItem'
 
   addedItem: (item, collection) =>
-    @$('.items').append (new TodoListItem model: item).el
+    item = new TodoListItem model: item
+    @$('.items').empty()
+    @render()
+    $(@el).trigger('create')
 
   removeList: (event) ->
     @model.destroy()
@@ -96,10 +103,24 @@ class TodoListView extends Mexico.Machete
 class TodoListItem extends Mexico.Mexican
   mustache: '''
     <div>
-      <input type="checkbox" name="checkbox-{{cid}}" id="checkbox-{{cid}}" class="custom" />
+      <input type="checkbox" data-mini="true" name="checkbox-{{cid}}" id="checkbox-{{cid}}" class="custom" />
       <label for="checkbox-{{cid}}">{{text}}</label>
     </div>
   '''
+
+  events:
+    'change input[type="checkbox"]': 'mark'
+
+  mark: (event) ->
+    @model.set('done', @$('input[type="checkbox"]:checked').length)
+    @model.save()
+    event.preventDefault()
+    return false
+
+  render: ->
+    if @model.get('done')
+      @$('input[type="checkbox"]').attr('checked', 'checked')
+    return this
 
 # ======================================================================
 # ROUTER
@@ -110,15 +131,16 @@ class TodoApp extends Backbone.Router
     'list/:cid': 'list'
 
   lists: ->
-    (new TodoListsView(collection:todolists, persist: true).appear())
+    (new TodoListsView(collection:todolists, persist: true)).render().appear()
 
   list: (cid) ->
-    (new TodoListView(model:todolists.getByCid cid).appear())
+    (new TodoListView(model:todolists.getByCid cid)).render().appear()
 
 # ======================================================================
 # RUN PROGRAM
 # ======================================================================
 todolists = new TodoLists
+datastore = {}
 todolists.fetch()
 Mexico.scout = 'lists'
 todo = new TodoApp

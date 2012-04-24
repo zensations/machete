@@ -1,5 +1,5 @@
 (function() {
-  var TodoApp, TodoItem, TodoItems, TodoList, TodoListItem, TodoListView, TodoLists, TodoListsItem, TodoListsView, todo, todolists,
+  var TodoApp, TodoItem, TodoList, TodoListItem, TodoListView, TodoLists, TodoListsItem, TodoListsView, datastore, todo, todolists,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
@@ -22,22 +22,6 @@
 
   })(Backbone.Model);
 
-  TodoItems = (function(_super) {
-
-    __extends(TodoItems, _super);
-
-    function TodoItems() {
-      TodoItems.__super__.constructor.apply(this, arguments);
-    }
-
-    TodoItems.prototype.model = TodoItem;
-
-    TodoItems.prototype.localStorage = new Backbone.LocalStorage('items');
-
-    return TodoItems;
-
-  })(Backbone.Collection);
-
   TodoList = (function(_super) {
 
     __extends(TodoList, _super);
@@ -49,7 +33,24 @@
     TodoList.prototype.name = 'My List';
 
     TodoList.prototype.initialize = function() {
-      this.items = new TodoItems;
+      var Store, id;
+      id = this.get('name');
+      Store = (function(_super2) {
+
+        __extends(Store, _super2);
+
+        function Store() {
+          Store.__super__.constructor.apply(this, arguments);
+        }
+
+        Store.prototype.mode = TodoList;
+
+        Store.prototype.localStorage = new Backbone.LocalStorage('list-' + id);
+
+        return Store;
+
+      })(Backbone.Collection);
+      this.items = new Store;
       return this.items.fetch();
     };
 
@@ -86,11 +87,12 @@
 
     TodoListsView.prototype.render = function() {
       var _this = this;
-      return this.collection.each(function(list) {
+      this.collection.each(function(list) {
         return _this.$('.lists').append((new TodoListsItem({
           model: list
-        })).el);
+        })).render().el);
       });
+      return this;
     };
 
     TodoListsView.prototype.events = {
@@ -114,12 +116,14 @@
     TodoListsView.prototype.listAdded = function(list, collection) {
       this.$('.lists').append((new TodoListsItem({
         model: list
-      })).el);
+      })).render().el);
       return this.$('.lists').listview('refresh');
     };
 
     TodoListsView.prototype.listRemoved = function(list, collection) {
-      return this.$('.lists').listview('refresh');
+      this.$('.lists').empty();
+      this.render();
+      return $(this.el).trigger('create');
     };
 
     return TodoListsView;
@@ -167,11 +171,12 @@
 
     TodoListView.prototype.render = function() {
       var _this = this;
-      return this.model.items.each(function(item) {
+      this.model.items.each(function(item) {
         return _this.$('.items').append((new TodoListItem({
           model: item
-        })).el);
+        })).render().el);
       });
+      return this;
     };
 
     TodoListView.prototype.events = {
@@ -180,9 +185,12 @@
     };
 
     TodoListView.prototype.addedItem = function(item, collection) {
-      return this.$('.items').append((new TodoListItem({
+      item = new TodoListItem({
         model: item
-      })).el);
+      });
+      this.$('.items').empty();
+      this.render();
+      return $(this.el).trigger('create');
     };
 
     TodoListView.prototype.removeList = function(event) {
@@ -215,7 +223,25 @@
       TodoListItem.__super__.constructor.apply(this, arguments);
     }
 
-    TodoListItem.prototype.mustache = '<div>\n  <input type="checkbox" name="checkbox-{{cid}}" id="checkbox-{{cid}}" class="custom" />\n  <label for="checkbox-{{cid}}">{{text}}</label>\n</div>';
+    TodoListItem.prototype.mustache = '<div>\n  <input type="checkbox" data-mini="true" name="checkbox-{{cid}}" id="checkbox-{{cid}}" class="custom" />\n  <label for="checkbox-{{cid}}">{{text}}</label>\n</div>';
+
+    TodoListItem.prototype.events = {
+      'change input[type="checkbox"]': 'mark'
+    };
+
+    TodoListItem.prototype.mark = function(event) {
+      this.model.set('done', this.$('input[type="checkbox"]:checked').length);
+      this.model.save();
+      event.preventDefault();
+      return false;
+    };
+
+    TodoListItem.prototype.render = function() {
+      if (this.model.get('done')) {
+        this.$('input[type="checkbox"]').attr('checked', 'checked');
+      }
+      return this;
+    };
 
     return TodoListItem;
 
@@ -235,16 +261,16 @@
     };
 
     TodoApp.prototype.lists = function() {
-      return new TodoListsView({
+      return (new TodoListsView({
         collection: todolists,
         persist: true
-      }).appear();
+      })).render().appear();
     };
 
     TodoApp.prototype.list = function(cid) {
-      return new TodoListView({
+      return (new TodoListView({
         model: todolists.getByCid(cid)
-      }).appear();
+      })).render().appear();
     };
 
     return TodoApp;
@@ -252,6 +278,8 @@
   })(Backbone.Router);
 
   todolists = new TodoLists;
+
+  datastore = {};
 
   todolists.fetch();
 

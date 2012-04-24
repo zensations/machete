@@ -209,7 +209,6 @@
       else {
         Mexico.Mexican.prototype._ensureElement.call(this);
         $.mobile.pageContainer.append(this.el);
-        this.render();
         // get the current fragment
         var fragment = Backbone.history.fragment;
         // check if page with data-url already exists in the dom ...
@@ -340,8 +339,8 @@
     if (_(elem[0]).isObject() && _(elem[0]).has('Mexican')) {
       elem[0].Mexican.eliminate();
     }
-    $('.mexican', elem).each(function(){
-      this[0].Mexican.eliminate();
+    $('.mexican', elem).each(function() {
+      this.Mexican.eliminate();
     });
   };
 
