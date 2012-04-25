@@ -55,6 +55,37 @@
     });
   });
 
+  /**
+   * Change color swatches dynamically.
+   */
+  $.fn.changeColorSwatch = function(theme, type) {
+    if (!type) {
+      type = 'theme';
+    }
+    var currentTheme = this.attr('data-' + type);
+    if (!currentTheme) {
+      currentTheme = 'c';
+    }
+    this.attr('data-' + type, theme);
+    var regex = new RegExp('^ui-(.*)-' + currentTheme + '$');
+    var classes = $.extend({}, this[0].classList);
+    var i = classes.length;
+    while (i--) {
+      var match = classes[i].match(regex);
+      if (match) {
+        this.removeClass(match[0]);
+        this.addClass('ui-' + match[1] + '-' + theme);
+      }
+    }
+    if(this.attr('type') == 'button') {
+      this.parent().changeColorSwatch(theme, type);
+    }
+    if (this.attr('type') == 'checkbox') {
+      this.parent().find('label[for="' + this.attr('name') + '"]')
+        .changeColorSwatch(theme, type);
+    }
+  };
+
   // Global store for transition/direction data caught from click events
   var transition = false;
   var reverse = false;
