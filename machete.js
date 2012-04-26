@@ -105,11 +105,13 @@
       return false;
     }
     if (!target.attr('href') || target.attr('href') === '#') {
-      return;
+      event.preventDefault();
+      return false;
     }
     else {
       transition = target.jqmData('transition');
       reverse = target.jqmData('direction') === 'reverse';
+      return true;
     }
   });
   // block links while page transitions
@@ -188,7 +190,7 @@
         }
         var property = match[2];
         var event = match[1];
-        if (!_.has(this, property)) { 
+        if (!_.has(this, property)) {
           throw new Error('Property "' + events[key] + '" does not exist');
         }
         method = _.bind(method, this);
@@ -232,6 +234,7 @@
   Mexico.Machete = Mexico.Mexican.extend({
 
     _ensureElement: function() {
+      // get the current fragment
       var fragment = Backbone.history.fragment;
       if ($('div:jqmData(url="' + fragment + '")').length > 0) {
         this.setElement($('div:jqmData(url="' + fragment + '")'), false);
@@ -240,8 +243,6 @@
       else {
         Mexico.Mexican.prototype._ensureElement.call(this);
         $.mobile.pageContainer.append(this.el);
-        // get the current fragment
-        var fragment = Backbone.history.fragment;
         // check if page with data-url already exists in the dom ...
         Mexico.Mexican.prototype.initialize.call(this);
         var that = this;
@@ -287,7 +288,7 @@
         transition = stack[stackindex + 1].transition;
         stackindex++;
       } else if (!(stackindex == stack.length - 1 && stack[stackindex - 1] === fragment)) {
-        // completely new page, chop head of stack 
+        // completely new page, chop head of stack
         stackindex++;
         stack = stack.slice(0, stackindex);
         stack.push({fragment: Backbone.history.fragment, transition: transition});
@@ -314,7 +315,7 @@
   var Pardre = Backbone.Router.extend({
     routes: {
       'machete': 'machete',
-      '': 'scout',
+      '': 'scout'
     },
     scout: function() {
       this.navigate(Mexico.scout, {trigger: true});
@@ -324,9 +325,11 @@
       machete.appear();
     }
   });
-  
+
   /**
    * Tells Backbone to navigate to another page.
+   * @param fragment string
+   *   the fragment to navigate to
    * @param options object
    *   "transition" and "reverse" fields are used for jqmobile transitions,
    *   everything else is passed over to backbone.
