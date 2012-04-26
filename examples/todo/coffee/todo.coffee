@@ -21,7 +21,7 @@ class TodoListView extends Mexico.Machete
 
   render: ->
     @collection.each (item) =>
-      @$('.items').append((new TodoListItem(model:item)).render().el)
+      @$('.items').append (new TodoListItem(model:item)).render().el
     return this
 
   events:
@@ -32,7 +32,7 @@ class TodoListView extends Mexico.Machete
   renderList: ->
     @$('.items').children().remove()
     @collection.each (item) =>
-      @$('.items').append((new TodoListItem(model:item)).render().el)
+      @$('.items').append (new TodoListItem(model:item)).render().el
     @$el.trigger('create')
 
   addItem: (event) =>
@@ -44,10 +44,10 @@ class TodoListView extends Mexico.Machete
     return false
 
 class TodoListItem extends Mexico.Mexican
+  mustache: 'mustaches/todolistitem.mustache'
+
   initialize: ->
     @box = @$('input[type="checkbox"]')
-
-  mustache: 'mustaches/todolistitem.mustache'
 
   events:
     'change input[type="checkbox"]': 'mark'
@@ -62,9 +62,8 @@ class TodoListItem extends Mexico.Mexican
   render: ->
     if @model.get('done')
       @box.attr('checked', 'checked')
-      @box.changeColorSwatch('c', 'theme')
     else
-      @box.changeColorSwatch('e', 'theme')
+      @box.removeAttr('checked')
     return this
 
 # ======================================================================

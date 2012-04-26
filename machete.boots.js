@@ -62,71 +62,54 @@
       this.add(new Boot(configuration));
     },
   });
+  Mexico.boots = new Boots();
 
   /**
    * Register boots in equipment rooster. Every equipment has to be a
    * Class extending Mexico.Equipment. Use <div data-equipment="[boots]"/>
    * to include it.
    */
-  Mexico.equipment.boots = Mexico.Mexicant.extend({
-    boots: [],
+  Mexico.equipment.boots = Mexico.Mexican.extend({
+    mustache: '<div data-role="footer"><div data-role="navbar"><ul></ul></div></div>',
     collection: Mexico.boots,
     render: function() {
-      this.$el = $('<div data-role="footer"><div data-role="navbar"><ul></ul></div></div>');
-      var list = $('ul', this.$el);
-      var that = this;
+      var list = this.$('ul');
       this.collection.each(function(model) {
-        var boot = new BootDisplay({model: model});
-        that.boots.push(boot);
-        list.append(boot.render().$el);
+        list.append(new BootDisplay({model: model}).render().el);
       });
       return this;
     },
-    cleanup: function() {
-      _.each(this.boot, function(boot) {
-        boot.cleanup();
-        delete boot;
-      });
-    }
   });
 
 
   /**
    * Bootdisplay, rendering one boot and listening to active-changes.
    */
-  BootDisplay = Mexico.Equipment.extend({
-    initialize: function() {
-      _.bindAll(this);
-      this.model.on('change:active', this.refreshActive);
+  BootDisplay = Mexico.Mexican.extend({
+    mustache: '<li><a data-transition="none" href="#{{route}}">{{text}}</a></li>',
+    events: {
+      'change:active @model': 'refreshActive'
     },
     render: function() {
-      this.$el = $('<li><a href="#' + this.model.get('route') + '">'
-                   + this.model.get('text') + '</a></li>');
       if (this.model.get('active')) {
-        $('a', this.$el).addClass('ui-btn-active');
+        this.$('a').addClass('ui-btn-active');
       }
       return this;
     },
     refreshActive: function() {
       if (this.model.get('active')) {
-        $('a', this.$el).addClass('ui-btn-active');
+        this.$('a').addClass('ui-btn-active');
       }
       else {
-        $('a', this.$el).removeClass('ui-btn-active');
+        this.$('a').removeClass('ui-btn-active');
       }
     },
-    cleanup: function() {
-      this.model.unbind('change:active', this.refreshActive);
-    }
   });
 
   // Global instance of boots-collection
-  Mexico.boots = new Boots();
 
-  $(document).bind('pageshow', function(event, ui) {
+  $(document).bind('pagebeforeshow', function(event, ui) {
     // set boots to active fragment
-    if (_.has(Mexico, 'boots')) {
-      Mexico.boots.setActive(Backbone.history.fragment);
-    }
+    Mexico.boots.setActive(Backbone.history.fragment);
   });
 }(jQuery));

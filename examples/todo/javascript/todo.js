@@ -104,11 +104,11 @@
       TodoListItem.__super__.constructor.apply(this, arguments);
     }
 
+    TodoListItem.prototype.mustache = 'mustaches/todolistitem.mustache';
+
     TodoListItem.prototype.initialize = function() {
       return this.box = this.$('input[type="checkbox"]');
     };
-
-    TodoListItem.prototype.mustache = 'mustaches/todolistitem.mustache';
 
     TodoListItem.prototype.events = {
       'change input[type="checkbox"]': 'mark'
@@ -125,9 +125,8 @@
     TodoListItem.prototype.render = function() {
       if (this.model.get('done')) {
         this.box.attr('checked', 'checked');
-        this.box.changeColorSwatch('c', 'theme');
       } else {
-        this.box.changeColorSwatch('e', 'theme');
+        this.box.removeAttr('checked');
       }
       return this;
     };

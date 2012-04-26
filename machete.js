@@ -105,13 +105,11 @@
       return false;
     }
     if (!target.attr('href') || target.attr('href') === '#') {
-      event.preventDefault();
-      return false;
+      return;
     }
     else {
       transition = target.jqmData('transition');
       reverse = target.jqmData('direction') === 'reverse';
-      return true;
     }
   });
   // block links while page transitions
@@ -190,7 +188,7 @@
         }
         var property = match[2];
         var event = match[1];
-        if (!_.has(this, property)) {
+        if (!_.has(this, property)) { 
           throw new Error('Property "' + events[key] + '" does not exist');
         }
         method = _.bind(method, this);
@@ -234,33 +232,30 @@
   Mexico.Machete = Mexico.Mexican.extend({
 
     _ensureElement: function() {
-      // get the current fragment
       var fragment = Backbone.history.fragment;
-      if ($('div:jqmData(url="' + fragment + '")').length > 0) {
+      if ($(':jqmData(url="' + fragment + '")').length > 0) {
         this.setElement($('div:jqmData(url="' + fragment + '")'), false);
         this.delegated = true;
       }
       else {
         Mexico.Mexican.prototype._ensureElement.call(this);
         $.mobile.pageContainer.append(this.el);
+        // get the current fragment
+        var fragment = Backbone.history.fragment;
         // check if page with data-url already exists in the dom ...
-        Mexico.Mexican.prototype.initialize.call(this);
         var that = this;
-        if (!this.equipment) {
-          this.equipment = {};
-        }
         // distribute equipment
         $('div[data-equipment]', $(this.el)).each(function() {
           var equipment = $(this).attr('data-equipment');
-          that.equipment[equipment] = new Mexico.equipment[equipment];
           if (_.has(Mexico.equipment, equipment)) {
-            $(this).replaceWith(that.equipment[equipment].el);
+            $(this).replaceWith((new Mexico.equipment[equipment]).render().el);
           }
         });
 
         if (this.options.persist) {
           $(this.el).attr('data-dom-cache', 'true');
         }
+        $(this.el).attr('data-url', fragment);
 
         // adjust header and footer to be persistent
         $('div[data-role="header"]', this.el).attr('data-id', 'machete-bandana');
@@ -288,22 +283,13 @@
         transition = stack[stackindex + 1].transition;
         stackindex++;
       } else if (!(stackindex == stack.length - 1 && stack[stackindex - 1] === fragment)) {
-        // completely new page, chop head of stack
+        // completely new page, chop head of stack 
         stackindex++;
         stack = stack.slice(0, stackindex);
         stack.push({fragment: Backbone.history.fragment, transition: transition});
       }
       $.mobile.changePage($(this.el), options);
     },
-
-    eliminate: function() {
-      // Clean up events bindings here ...
-      _.each(this.equipment, function(equipment){
-        equipment.eliminate();
-      });
-      // call super eliminate to clear bindings
-      Mexico.Mexican.prototype.eliminate.call(this);
-    }
   });
 
   // sets the scout to "machete", you will want to override this
@@ -315,7 +301,7 @@
   var Pardre = Backbone.Router.extend({
     routes: {
       'machete': 'machete',
-      '': 'scout'
+      '': 'scout',
     },
     scout: function() {
       this.navigate(Mexico.scout, {trigger: true});
@@ -325,11 +311,9 @@
       machete.appear();
     }
   });
-
+  
   /**
    * Tells Backbone to navigate to another page.
-   * @param fragment string
-   *   the fragment to navigate to
    * @param options object
    *   "transition" and "reverse" fields are used for jqmobile transitions,
    *   everything else is passed over to backbone.
@@ -370,29 +354,30 @@
   // override jquery methods which delete elements to trigger proper cleanup
   // behavior
   _eliminateElement = function (elem) {
+    /*
     if (_(elem[0]).isObject() && _(elem[0]).has('Mexican')) {
       elem[0].Mexican.eliminate();
     }
     $('.mexican', elem).each(function() {
       this.Mexican.eliminate();
     });
+    */
   };
 
   var macheteRemove = $.fn.remove;
   $.fn.remove = function (selector, keepData) {
     _eliminateElement(this);
-    macheteRemove.call(this, selector, keepData);
+    return macheteRemove.call(this, selector, keepData);
+  };
+  var macheteEmpty = $.fn.empty;
+  $.fn.empty = function () {
+    _eliminateElement(this);
+    return macheteEmpty.call(this);
   };
 
-  var macheteEmpty = $.fn.remove;
-  $.fn.remove = function () {
+  var macheteReplaceWith = $.fn.replaceWith;
+  $.fn.replaceWith = function (value) {
     _eliminateElement(this);
-    macheteEmpty.call(this);
-  };
-
-  var macheteReplaceWith = $.fn.remove;
-  $.fn.remove = function (value) {
-    _eliminateElement(this);
-    macheteReplaceWith.call(this, value);
+    return macheteReplaceWith.call(this, value);
   };
 }(jQuery));
