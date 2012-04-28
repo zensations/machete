@@ -36,25 +36,6 @@
   // Machete plugin handling
   Mexico.equipment = {};
 
-  // bind mobileinit and reconfigure jquery mobile defaults
-  $(document).bind('mobileinit', function() {
-    // Disable jQuery Mobile link and ajax handling
-    $.extend($.mobile, {
-      ajaxEnabled: false,
-      linkBindingEnabled: false,
-      hashListeningEnabled: false,
-      pushStateEnabled: false
-    });
-    $.mobile.buttonMarkup.hoverDelay = 0;
-
-    // default configure header and toolbars to be fixed
-    $.extend($.mobile.fixedtoolbar.prototype.options, {
-      updatePagePadding: false,
-      transition: 'none',
-      initSelector: ':jqmData(role="header"), :jqmData(role="footer")'
-    });
-  });
-
   /**
    * Change color swatches dynamically.
    */
@@ -85,20 +66,70 @@
         .changeColorSwatch(theme, type);
     }
   };
+  /**
+   * Mexico shouts out in anger!
+   * And delivers useful messages to your user.
+   */
+  Mexico.shout = function (message, callback, theme) {
+    if (!theme) {
+      theme = 'e';
+    }
+    $.mobile.showPageLoadingMsg(theme, message, true);
+    window.setTimeout(function(){
+      $.mobile.hidePageLoadingMsg();
+      if(typeof callback !== 'undefined') {
+        callback();
+      }
+    }, 1500);
+  };
+
+  var overruleMsgHide = false;
+  $.mobile.hidePageLoadingMsg = _.wrap($.mobile.hidePageLoadingMsg, function(func){
+    if (!overruleMsgHide) {
+      func();
+    }
+  });
+
+  Mexico.loading = function () {
+    $.mobile.showPageLoadingMsg('b', 'Loading ...');
+    overruleMsgHide = true;
+  }
+  Mexico.loadingDone = function() {
+    overruleMsgHide = false;
+    $.mobile.hidePageLoadingMsg();
+  }
 
   // Global store for transition/direction data caught from click events
   var transition = false;
   var reverse = false;
 
+  /* Event Bindings - hashchange, submit, and click */
+	function findClosestLink( ele ) {
+		while ( ele ) {
+			// Look for the closest element with a nodeName of "a".
+			// Note that we are checking if we have a valid nodeName
+			// before attempting to access it. This is because the
+			// node we get called with could have originated from within
+			// an embedded SVG document where some symbol instance elements
+			// don't have nodeName defined on them, or strings are of type
+			// SVGAnimatedString.
+			if ( ( typeof ele.nodeName === "string" ) && ele.nodeName.toLowerCase() == "a" ) {
+				break;
+			}
+			ele = ele.parentNode;
+		}
+		return ele;
+	}
   /**
    * Handle all click events to provide jQuery mobile standard functionality.
    */
-  $('a').live('click', function (event) {
+  $(document).bind('click', function (event) {
     if (transitioning) {
       event.preventDefault();
       return false;
     }
-    var target = $(event.currentTarget);
+    var link = findClosestLink(event.target);
+    var target = $(link);
     if (target.jqmData('rel') === 'back') {
       history.back();
       event.preventDefault();
@@ -135,6 +166,9 @@
   Mexico.Mexican = Backbone.View.extend({
     mustache: false,
     _ensureElement: function() {
+      if (this.options.mustache) {
+        this.mustache = this.options.mustache;
+      }
       if (this.mustache) {
         // if there is a mustache, use it as backbone base element ...
         if (!_.has(templates, this.mustache)) {
@@ -230,7 +264,6 @@
    * many more!
    */
   Mexico.Machete = Mexico.Mexican.extend({
-
     _ensureElement: function() {
       var fragment = Backbone.history.fragment;
       if ($(':jqmData(url="' + fragment + '")').length > 0) {
@@ -238,30 +271,36 @@
         this.delegated = true;
       }
       else {
-        Mexico.Mexican.prototype._ensureElement.call(this);
-        $.mobile.pageContainer.append(this.el);
-        // get the current fragment
-        var fragment = Backbone.history.fragment;
-        // check if page with data-url already exists in the dom ...
-        var that = this;
-        // distribute equipment
-        $('div[data-equipment]', $(this.el)).each(function() {
-          var equipment = $(this).attr('data-equipment');
-          if (_.has(Mexico.equipment, equipment)) {
-            $(this).replaceWith((new Mexico.equipment[equipment]).render().el);
-          }
-        });
-
-        if (this.options.persist) {
-          $(this.el).attr('data-dom-cache', 'true');
-        }
-        $(this.el).attr('data-url', fragment);
-
-        // adjust header and footer to be persistent
-        $('div[data-role="header"]', this.el).attr('data-id', 'machete-bandana');
-        $('div[data-role="footer"]', this.el).attr('data-id', 'machete-boots');
+        this._build();
       }
     },
+
+    /**
+     * Helper function to build content.
+     */
+    _build: function() {
+      Mexico.Mexican.prototype._ensureElement.call(this);
+      $.mobile.pageContainer.append(this.el);
+      // get the current fragment
+      var fragment = Backbone.history.fragment;
+      var that = this;
+      // distribute equipment
+      $('div[data-equipment]', $(this.el)).each(function() {
+        var equipment = $(this).attr('data-equipment');
+        if (_.has(Mexico.equipment, equipment)) {
+          $(this).replaceWith((new Mexico.equipment[equipment]).render().el);
+        }
+      });
+      if (this.options.persist) {
+        $(this.el).attr('data-dom-cache', 'true');
+      }
+      $(this.el).attr('data-url', fragment);
+
+      // adjust header and footer to be persistent
+      $('div[data-role="header"]', this.el).attr('data-id', 'machete-bandana');
+      $('div[data-role="footer"]', this.el).attr('data-id', 'machete-boots');
+    },
+
 
     /**
      * Makes Machete appear.
@@ -269,7 +308,8 @@
     appear: function(options) {
       var options = _.extend({
         transition: transition,
-        reverse: reverse
+        reverse: reverse,
+        showLoadMsg: false
       }, options);
       // transition stack handling
       var fragment = Backbone.history.fragment;
@@ -288,7 +328,8 @@
         stack = stack.slice(0, stackindex);
         stack.push({fragment: Backbone.history.fragment, transition: transition});
       }
-      $.mobile.changePage($(this.el), options);
+      var page = $(this.el);
+      $.mobile.changePage(page, options);
     },
   });
 
@@ -354,14 +395,12 @@
   // override jquery methods which delete elements to trigger proper cleanup
   // behavior
   _eliminateElement = function (elem) {
-    /*
     if (_(elem[0]).isObject() && _(elem[0]).has('Mexican')) {
       elem[0].Mexican.eliminate();
     }
     $('.mexican', elem).each(function() {
       this.Mexican.eliminate();
     });
-    */
   };
 
   var macheteRemove = $.fn.remove;

@@ -86,7 +86,7 @@
    * Bootdisplay, rendering one boot and listening to active-changes.
    */
   BootDisplay = Mexico.Mexican.extend({
-    mustache: '<li><a data-transition="none" href="#{{route}}">{{text}}</a></li>',
+    mustache: '<li><a href="#{{route}}">{{text}}</a></li>',
     events: {
       'change:active @model': 'refreshActive'
     },
