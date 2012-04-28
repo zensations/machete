@@ -1,5 +1,5 @@
 (function() {
-  var Todo, TodoItem, TodoList, TodoListItem, TodoListView, todo, todolist,
+  var Todo, TodoInfoView, TodoItem, TodoList, TodoListItem, TodoListView, todo, todolist,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; },
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
@@ -42,6 +42,20 @@
 
   todolist.fetch();
 
+  TodoInfoView = (function(_super) {
+
+    __extends(TodoInfoView, _super);
+
+    function TodoInfoView() {
+      TodoInfoView.__super__.constructor.apply(this, arguments);
+    }
+
+    TodoInfoView.prototype.template = 'mustaches/info.html';
+
+    return TodoInfoView;
+
+  })(Machete.Gear);
+
   TodoListView = (function(_super) {
 
     __extends(TodoListView, _super);
@@ -51,14 +65,14 @@
       TodoListView.__super__.constructor.apply(this, arguments);
     }
 
-    TodoListView.prototype.mustache = 'mustaches/todolist.mustache';
+    TodoListView.prototype.template = 'mustaches/todolist.html';
 
     TodoListView.prototype.render = function() {
       var _this = this;
       this.collection.each(function(item) {
         return _this.$('.items').append((new TodoListItem({
           model: item
-        })).render().el);
+        })).el);
       });
       return this;
     };
@@ -75,7 +89,7 @@
       this.collection.each(function(item) {
         return _this.$('.items').append((new TodoListItem({
           model: item
-        })).render().el);
+        })).el);
       });
       return this.$el.trigger('create');
     };
@@ -85,16 +99,16 @@
       item = new TodoItem({
         text: this.$('input[name="item"]').val()
       });
-      this.$('input[name="item"]').val('');
       this.collection.add(item);
       item.save();
+      this.$('input[name="item"]').val('');
       event.preventDefault();
       return false;
     };
 
     return TodoListView;
 
-  })(Mexico.Machete);
+  })(Machete.Gear);
 
   TodoListItem = (function(_super) {
 
@@ -118,7 +132,6 @@
       this.model.set('done', this.box.is(':checked'));
       this.model.save();
       event.preventDefault();
-      this.render();
       return false;
     };
 
@@ -133,7 +146,17 @@
 
     return TodoListItem;
 
-  })(Mexico.Mexican);
+  })(Machete.Gear);
+
+  Machete.boots.add({
+    text: 'List',
+    route: 'todo'
+  });
+
+  Machete.boots.add({
+    text: 'Info',
+    route: 'info'
+  });
 
   Todo = (function(_super) {
 
@@ -144,14 +167,22 @@
     }
 
     Todo.prototype.routes = {
-      'todo': 'todo'
+      'todo': 'todo',
+      'info': 'info'
+    };
+
+    Todo.prototype.info = function() {
+      return Machete.run({
+        vest: TodoInfoView
+      });
     };
 
     Todo.prototype.todo = function() {
-      return (new TodoListView({
-        collection: todolist
-      })).render().appear({
-        transition: 'none'
+      return Machete.run({
+        vest: TodoListView,
+        options: {
+          collection: todolist
+        }
       });
     };
 
@@ -159,7 +190,7 @@
 
   })(Backbone.Router);
 
-  Mexico.scout = 'todo';
+  Machete.scout = 'todo';
 
   todo = new Todo;
 
