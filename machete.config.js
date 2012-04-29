@@ -37,7 +37,7 @@
     $.extend($.mobile.fixedtoolbar.prototype.options, {
       updatePagePadding: false,
       transition: 'none',
-      initSelector: ':jqmData(role="header"), :jqmData(role="footer")'
+      initSelector: ':jqmData(role="header"), :jqmData(role="footer")',
     });
   });
 }(jQuery));

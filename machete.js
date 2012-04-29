@@ -70,6 +70,7 @@
     $.mobile.showPageLoadingMsg('b', 'Loading ...');
     overruleMsgHide = true;
   }
+
   Machete.found = function() {
     overruleMsgHide = false;
     $.mobile.hidePageLoadingMsg();
@@ -140,8 +141,8 @@
     if (stackindex > 0 && stack[stackindex - 1].fragment === fragment) {
       // new fragment points exactly one page back
       transition = stack[stackindex].transition;
+      reverse = !stack[stackindex].reverse;
       stackindex--;
-      reverse = !options.reverse;
     } else if (stackindex < stack.length - 1 && stack[stackindex + 1] === fragment) {
       // new fragment points to the last visited page (forward)
       transition = stack[stackindex + 1].transition;
@@ -172,19 +173,35 @@
     }, options);
 
     $page = $('<div data-role="page" data-url="' + fragment + '"></div>');
+    var path = fragment.split('/');
+    var classes = [];
+    while(path.length > 0) {
+      classes.push(path.join('-'));
+      path.pop();
+    }
+    _.each(classes, function(c){
+      $page.addClass(c);
+    });
 
     if (options.persist) {
       $page.attr('data-dom-cache', 'true');
     }
 
+    var vest = new opts.vest(opts.options);
+    vest.render();
+    $page.append(vest.el);
+
     if (opts.bandana) {
-      $page.append((new opts.bandana).el);
+      var bandana = new opts.bandana;
+      bandana.render();
+      $page.append(bandana.el);
     }
 
-    $page.append((new opts.vest(opts.options)).el);
 
     if (opts.boots) {
-      $page.append((new opts.boots).el);
+      var boots = new opts.boots;
+      boots.render();
+      $page.append(boots.el);
     }
 
     // adjust header and footer to be persistent
@@ -237,7 +254,9 @@
     template: '<div></div>',
     mustache: false,
     briefing: {},
+    timer: 0,
     _ensureElement: function() {
+      _.bindAll(this);
       if (this.options.mustache) {
         this.mustache = this.options.mustache;
       }
@@ -252,25 +271,28 @@
         this.setElement(_getTemplate(this.template), false);
       }
       if (_.has(briefing, 'resolve')) {
-        _.bindAll(this);
+        this.timer = (new Date).getTime();
         briefing.done(this._deferredBriefing);
       }
       this.el.Gear = this;
-      this.initialize();
-      this.render();
       $(this.el).addClass('gear');
     },
 
     _deferredBriefing: function(briefing) {
+      var effect = ((new Date).getTime() - this.timer) > 100;
       var content = $(_growMustache(this.mustache).render(briefing));
       this.$el.empty();
       this.$el.append(content.children());
-      this.$el.hide()
-      this.initialize();
-      this.render();
+      if (effect) {
+        this.$el.hide()
+      }
       this.delegateEvents();
+      this.render();
       this.$el.trigger('create');
-      this.$el.fadeIn();
+      if (effect) {
+        this.$el.fadeIn();
+      }
+      $('[data-role="header", data-role="footer"]').fixedtoolbar('show');
     },
 
     /**
@@ -285,6 +307,16 @@
         }
       }
       return data;
+    },
+
+    remind: function() {
+      var briefing = this.brief();
+      if (_.has(briefing, 'resolve')) {
+        briefing.done(this._deferredBriefing);
+      }
+      else {
+        this._deferredBriefing(briefing);
+      }
     },
 
     delegateEvents: function (events) {
@@ -346,7 +378,94 @@
    * Simple content page with an important warning.
    */
   Machete.Vest = Machete.Gear.extend({
-    template: '<div data-role="content"><p>You just messed with the wrong mexican &hellip;</p></div>'
+    template: '<div data-role="content"><p>You just messed with the wrong mexican &hellip;</p></div>',
+    /**
+     * Provide default values for the bandana.
+     */
+    bandana: function() {
+      return {
+        title: 'Loading ...',
+        route: false,
+        icon: false,
+        text: false,
+        transition: false
+      };
+    }
+  });
+
+  // ======================================================================
+  // Machete.Bandana
+  // ======================================================================
+  var Bandana = Backbone.Model.extend({
+    title: 'Machete',
+    back: false,
+    route: false,
+    icon: false,
+    text: false,
+    transition: false,
+  });
+
+  Machete.bandana = new Bandana;
+  Machete.bandana.default = {
+    title: 'Machete',
+    route: false,
+    icon: false,
+    text: false,
+    transition: false
+  };
+
+  var BandanaDisplay = Machete.Gear.extend({
+    template: '<div data-role="header" data-position="fixed" data-id="machete-bandana"><h1>Machete</h1></div>',
+    events: {
+      'change @model': 'render'
+    },
+    initialize: function() {
+      this.model = Machete.bandana;
+    },
+    render: function() {
+      this.$('.back').remove();
+      this.$('.action').remove();
+      if (this.model.get('back')) {
+        this.$el.append('<a class="back ui-btn-left" data-rel="back" data-icon="arrow-l">Back</a>').trigger('create');
+      }
+      else {
+        this.$('.back').remove();
+      }
+      this.$('h1').text(this.model.get('title'));
+      var route = this.model.get('route');
+      var icon = this.model.get('icon');
+      var text = this.model.get('text');
+      var transition = this.model.get('transition');
+      if (route && (icon || text)) {
+        var $action = $('<a class="ui-btn-right action">Action</a>')
+          .attr('href', route)
+          .attr('data-transition', transition);
+        if (icon) {
+          $action.attr('data-icon', icon);
+          $action.attr('data-iconpos', 'right');
+        }
+        if (text) {
+          $action.text(text);
+        }
+        else {
+          $action.attr('data-iconpos', 'notext');
+        }
+      }
+      this.$el.append($action).trigger('create');
+    }
+  });
+
+  $(document).bind('pagebeforehide', function(event, ui) {
+    var gear = $(':jqmData(role="content")', ui.nextPage)[0].Gear;
+    var ban = _.extend({
+      title: 'Machete',
+      route: false,
+      text: false,
+      icon: false
+    }, gear.bandana(), {
+      back: (stackindex > 0)
+    });
+    Machete.bandana.set(ban);
   });
 
   // ======================================================================
@@ -355,7 +474,10 @@
   /**
    * Simple Model storing Application Tabs.
    */
-  Boot = Backbone.Model.extend({});
+  Boot = Backbone.Model.extend({
+    title: 'Machete',
+    action: false
+  });
 
   /**
    * Boots collection. Stores "Boots" (Application Tabs).
@@ -400,7 +522,7 @@
    */
   var BootsDisplay = Machete.Gear.extend({
     collection: Machete.boots,
-    mustache: '<div data-role="footer" data-id="machete-boots"><div data-role="navbar"><ul></ul></div></div>',
+    mustache: '<div data-role="footer" data-position="fixed" data-id="machete-boots"><div data-role="navbar"><ul></ul></div></div>',
     render: function() {
       var list = this.$('ul');
       this.collection.each(function(model) {
@@ -437,38 +559,10 @@
       }
     },
   });
+
   $(document).bind('pagebeforeshow', function(event, ui) {
     // set boots to active fragment
     Machete.boots.setActive(Backbone.history.fragment);
-  });
-
-  // ======================================================================
-  // Machete.Bandana
-  // ======================================================================
-  var Bandana = Backbone.Model.extend({
-    model: false
-  });
-
-  // global bandana
-  Machete.bandana = new Bandana({
-    title: 'Machete',
-    icon: false,
-    text: false,
-    route: false
-  });
-
-  var BandanaDisplay = Machete.Gear.extend({
-    brief: function() {
-      return {
-        back: (stackindex > 0),
-        title: Machete.bandana.get('title')
-      };
-    },
-    mustache: '<div data-role="header" data-id="machete-bandana">{{#back}}<a data-rel="back" data-icon="arrow-l">Back</a>{{/back}}<h1>{{title}}</h1></div>',
-  });
-
-  $(document).bind('pagebeforeshow', function() {
-    Machete.bandana.set('back', (stackindex > 0));
   });
 
   // ======================================================================
