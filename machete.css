@@ -1,8 +1,0 @@
-input.ui-input-text, textarea.ui-input-text {
-  line-height: 1em;
-}
-
-.ui-page {
-  -webkit-backface-visibility: hidden;
-  -webkit-transform: translate3d(0,0,0) rotate(0) scale(1);
-}

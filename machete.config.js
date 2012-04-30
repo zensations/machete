@@ -31,13 +31,12 @@
       pushStateEnabled: false,
       defaultPageTransition: 'none'
     });
-    $.mobile.buttonMarkup.hoverDelay = 0;
 
     // default configure header and toolbars to be fixed
     $.extend($.mobile.fixedtoolbar.prototype.options, {
+      tapToggle: false,
       updatePagePadding: false,
-      transition: 'none',
-      initSelector: ':jqmData(role="header"), :jqmData(role="footer")',
+      transition: 'none'
     });
   });
 }(jQuery));

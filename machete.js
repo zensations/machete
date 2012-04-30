@@ -20,7 +20,8 @@
  * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-(function ($) {
+(function($) {
+  $ = jQuery;
   // Machete object setup
   var root = this;
   var Machete = {};
@@ -69,12 +70,12 @@
   Machete.searching = function () {
     $.mobile.showPageLoadingMsg('b', 'Loading ...');
     overruleMsgHide = true;
-  }
+  };
 
   Machete.found = function() {
     overruleMsgHide = false;
     $.mobile.hidePageLoadingMsg();
-  }
+  };
 
 
   // ======================================================================
@@ -122,7 +123,6 @@
   });
 
   $(document).bind('pageshow', function(event, ui){
-    $('[data-role="header", data-role="footer"]').fixedtoolbar('show');
     transitioning = false;
   });
 
@@ -187,19 +187,20 @@
       $page.attr('data-dom-cache', 'true');
     }
 
-    var vest = new opts.vest(opts.options);
-    vest.render();
-    $page.append(vest.el);
 
     if (opts.bandana) {
-      var bandana = new opts.bandana;
+      var bandana = new opts.bandana();
       bandana.render();
       $page.append(bandana.el);
     }
 
+    var vest = new opts.vest(opts.options);
+    vest.render();
+    $page.append(vest.el);
+
 
     if (opts.boots) {
-      var boots = new opts.boots;
+      var boots = new opts.boots();
       boots.render();
       $page.append(boots.el);
     }
@@ -207,7 +208,7 @@
     // adjust header and footer to be persistent
     $.mobile.pageContainer.append($page);
     $.mobile.changePage($page, cpopts);
-  }
+  };
 
   // ======================================================================
   // Views
@@ -253,8 +254,9 @@
   Machete.Gear = Backbone.View.extend({
     template: '<div></div>',
     mustache: false,
-    briefing: {},
+    briefing: false,
     timer: 0,
+
     _ensureElement: function() {
       _.bindAll(this);
       if (this.options.mustache) {
@@ -268,23 +270,26 @@
         this.setElement(_growMustache(this.mustache).render(briefing), false);
       }
       else {
+        this.briefing = briefing;
         this.setElement(_getTemplate(this.template), false);
       }
       if (_.has(briefing, 'resolve')) {
-        this.timer = (new Date).getTime();
+        this.timer = (new Date()).getTime();
         briefing.done(this._deferredBriefing);
       }
+      $(document).trigger('machetebriefed', this);
       this.el.Gear = this;
       $(this.el).addClass('gear');
     },
 
     _deferredBriefing: function(briefing) {
-      var effect = ((new Date).getTime() - this.timer) > 100;
+      this.briefing = briefing;
+      var effect = ((new Date()).getTime() - this.timer) > 100;
       var content = $(_growMustache(this.mustache).render(briefing));
       this.$el.empty();
       this.$el.append(content.children());
       if (effect) {
-        this.$el.hide()
+        this.$el.hide();
       }
       this.delegateEvents();
       this.render();
@@ -292,7 +297,7 @@
       if (effect) {
         this.$el.fadeIn();
       }
-      $('[data-role="header", data-role="footer"]').fixedtoolbar('show');
+      $(document).trigger('machetebriefed');
     },
 
     /**
@@ -356,12 +361,13 @@
 
     undelegateEvents: function () {
       Backbone.View.prototype.undelegateEvents.call(this);
-      var delegation = null;
       if (!this.delegatedPropertyEvents) {
         this.delegatedPropertyEvents = [];
       }
-      while(delegation = this.delegatedPropertyEvents.pop()) {
+      var delegation = this.delegatedPropertyEvents.pop();
+      while(delegation) {
         this[delegation.property].unbind(delegation.event, delegation.method);
+        delegation = this.delegatedPropertyEvents.pop();
       }
     },
 
@@ -402,17 +408,10 @@
     route: false,
     icon: false,
     text: false,
-    transition: false,
+    transition: false
   });
 
-  Machete.bandana = new Bandana;
-  Machete.bandana.default = {
-    title: 'Machete',
-    route: false,
-    icon: false,
-    text: false,
-    transition: false
-  };
+  Machete.bandana = new Bandana();
 
   var BandanaDisplay = Machete.Gear.extend({
     template: '<div data-role="header" data-position="fixed" data-id="machete-bandana"><h1>Machete</h1></div>',
@@ -436,8 +435,9 @@
       var icon = this.model.get('icon');
       var text = this.model.get('text');
       var transition = this.model.get('transition');
+      $action = false;
       if (route && (icon || text)) {
-        var $action = $('<a class="ui-btn-right action">Action</a>')
+        $action = $('<a class="ui-btn-right action">Action</a>')
           .attr('href', route)
           .attr('data-transition', transition);
         if (icon) {
@@ -451,21 +451,21 @@
           $action.attr('data-iconpos', 'notext');
         }
       }
-      this.$el.append($action).trigger('create');
+      if ($action) {
+        this.$el.append($action).trigger('create');
+      }
     }
   });
 
-  $(document).bind('pagebeforehide', function(event, ui) {
-    var gear = $(':jqmData(role="content")', ui.nextPage)[0].Gear;
-    var ban = _.extend({
-      title: 'Machete',
-      route: false,
-      text: false,
-      icon: false
-    }, gear.bandana(), {
-      back: (stackindex > 0)
-    });
-    Machete.bandana.set(ban);
+  $(document).bind('machetebriefed', function(doc, gear) {
+    if(gear && _.has(gear, 'bandana') && _.isFunction(gear.bandana)) {
+      Machete.bandana.set(_.extend({
+        title: 'Machete',
+        route: false,
+        text: false,
+        icon: false
+      }, gear.bandana(), {back: (stackindex > 0)}));
+    }
   });
 
   // ======================================================================
@@ -509,7 +509,7 @@
      */
     addBoot: function(configuration) {
       this.add(new Boot(configuration));
-    },
+    }
   });
 
   // Global instance of boots-collection
@@ -529,7 +529,7 @@
         list.append(new BootDisplay({model: model}).render().el);
       });
       return this;
-    },
+    }
   });
 
   /**
@@ -557,7 +557,7 @@
       else {
         this.$('a').removeClass('ui-btn-active');
       }
-    },
+    }
   });
 
   $(document).bind('pagebeforeshow', function(event, ui) {
@@ -598,7 +598,7 @@
   var Pardre = Backbone.Router.extend({
     routes: {
       'machete': 'machete',
-      '': 'scout',
+      '': 'scout'
     },
     scout: function() {
       this.navigate(Machete.scout, {trigger: true});
@@ -656,4 +656,5 @@
     _eliminateElement(this);
     return macheteReplaceWith.call(this, value);
   };
+  return Machete;
 }(jQuery));
