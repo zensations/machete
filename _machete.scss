@@ -1,0 +1,427 @@
+@import 'compass';
+@mixin machete-swatch(
+  $letter: 'a',
+  $background-color: #eeeeee,
+  $text-color: #3E3E3E,
+  $link-color: #2489CE
+) {
+  .ui-bar-#{$letter} {
+    border: 1px solid	darken($background-color, 20%);
+    background:	$background-color;
+    color: lighten($text-color, 3%);
+    font-weight: bold;
+    /*text-shadow: 0 1px 1px lighten($background-color, 3%);*/
+    @include background-image(linear-gradient( lighten($background-color, 5%), darken($background-color, 5%)));
+    .ui-link-inherit {
+      color: 	$text-color;
+    }
+    .ui-link {
+      color: $link-color;
+      font-weight: bold;
+      $active-link-color: darken($link-color, 10%);
+      &:hover { color: $active-link-color; }
+      &:active { color: $active-link-color; }
+      &:visited { color: $active-link-color; }
+    }
+  }
+  .ui-body-#{$letter}, .ui-overlay-#{$letter} {
+    border: 1px solid	darken($background-color, 16%);
+    color: $text-color;
+    /*text-shadow: 0 1px 0 lighten($background-color, 3%);*/
+    background:	lighten($background-color, 4%);
+    @include background-image(linear-gradient(lighten($background-color, 10%), $background-color));
+  }
+  .ui-overlay-#{$letter} {
+    background-image: none;
+    border-width: 0;
+  }
+  .ui-body-#{$letter} {
+    .ui-link-inherit {
+      color: 	lighten($text-color, 3%);
+    }
+    .ui-link {
+      color: $link-color;
+      font-weight: bold;
+      &:hover { color: $link-color; }
+      &:active { color: $link-color; }
+      &:visited { color: $link-color; }
+    }
+  }
+  .ui-btn-up-#{$letter} {
+    border: 1px solid	darken($background-color, 16%);
+    background: $background-color;
+    font-weight: bold;
+    color: darken($text-color, 10%);
+    /*text-shadow: 0 1px 0 lighten($background-color, 3%);*/
+    @include background-image(linear-gradient( lighten($background-color, 3%), darken($background-color, 3%)));
+    a.ui-link-inherit {
+      color:#2F3E46;
+    }
+  }
+  .ui-btn-hover-#{$letter} {
+    border: 1px solid	darken($background-color, 20%);
+    background:	darken($background-color, 5%);
+    font-weight: bold;
+    color: $text-color;
+    text-shadow: 0 1px 0 lighten($background-color, 3%);
+    @include background-image(linear-gradient( lighten($background-color, 1%), darken($background-color, 5%)));
+    a.ui-link-inherit {
+      color: #2F3E46;
+    }
+  }
+  .ui-btn-down-#{$letter} {
+    border: 1px solid	darken($background-color, 20%);
+    background:	darken($background-color, 5%);
+    font-weight: bold;
+    color: $text-color;
+    text-shadow: 0 1px 0 lighten($background-color, 3%);
+    @include background-image(linear-gradient( darken($background-color, 5%), lighten($background-color, 1%)));
+    a.ui-link-inherit {
+      color: #2F3E46;
+    }
+  }
+  .ui-btn-up-#{$letter}, .ui-btn-hover-#{$letter}, .ui-btn-down-#{$letter} {
+    text-decoration: none;
+  }
+}
+
+@mixin machete ($radius: 0.6em, $button-radius: 1em, $active-color: #5393c5) {
+  /* Structure */
+  /* links within "buttons" */
+
+  a.ui-link-inherit {
+    text-decoration: none !important;
+  }
+
+
+  /* Active class used as the "on" state across all themes */
+  .ui-btn-active {
+    border: 1px solid darken($active-color, 10%);
+    background: $active-color;
+    font-weight: bold;
+    color: #ffffff;
+    cursor: pointer;
+    text-shadow: 0 1px 1px darken($active-color, 10%);
+    text-decoration: none;
+    @include background-image(linear-gradient($active-color, lighten($active-color, 10%)));
+  }
+
+  .ui-btn-active a.ui-link-inherit {
+    color: #ffffff;
+  }
+
+
+  /* button inner top highlight
+  -----------------------------------------------------------------------------------------------------------*/
+
+  .ui-btn-inner {
+    border-top: 1px solid #fff;
+    border-color: rgba(255,255,255,.3);
+  }
+
+
+  /* corner rounding classes
+  -----------------------------------------------------------------------------------------------------------*/
+  .ui-corner-tl {
+    @include border-top-left-radius($radius);
+  }
+
+  .ui-corner-tr {
+    @include border-top-right-radius($radius);
+  }
+
+  .ui-corner-bl {
+    @include border-bottom-left-radius($radius);
+  }
+
+  .ui-corner-br {
+    @include border-bottom-right-radius($radius);
+  }
+
+  .ui-corner-top {
+    @include border-top-left-radius($radius);
+    @include border-top-right-radius($radius);
+  }
+
+  .ui-corner-bottom {
+    @include border-bottom-left-radius($radius);
+    @include border-bottom-right-radius($radius);
+  }
+
+  .ui-corner-right {
+    @include border-top-right-radius($radius);
+    @include border-bottom-right-radius($radius);
+  }
+  .ui-corner-left {
+    @include border-top-left-radius($radius);
+    @include border-bottom-left-radius($radius);
+  }
+
+  .ui-corner-all {
+    @include border-radius($radius);
+  }
+
+  .ui-corner-none {
+    @include border-radius(0);
+  }
+
+  /* Form field separator
+  -----------------------------------------------------------------------------------------------------------*/
+  .ui-br {
+    border-bottom: rgb(130,130,130);
+    border-bottom: rgba(130,130,130,.3);
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+  }
+
+  /* Interaction cues */
+  .ui-disabled {
+    @include opacity(.3);
+  }
+  .ui-disabled,
+  .ui-disabled a {
+    cursor: default !important;
+    pointer-events: none;
+  }
+
+  /* Icons */
+  .ui-icon,
+  .ui-icon-searchfield:after {
+    background:	#666666;
+    background:	rgba(0,0,0,.4);
+    background-image: url(../machete/images/icons-18-white.png);
+    background-repeat: no-repeat;
+    @include border-radius(9px);
+  }
+
+
+  /* Alt icon color */
+
+  .ui-icon-alt {
+    background:	#fff;
+    background:	rgba(255,255,255,.3);
+    background-image: url(../machete/images/icons-18-black.png);
+    background-repeat: no-repeat;
+  }
+
+  /* HD/"retina" sprite */
+
+  @media only screen and (-webkit-min-device-pixel-ratio: 1.5),
+         only screen and (min--moz-device-pixel-ratio: 1.5),
+         only screen and (min-resolution: 240dpi) {
+    
+    .ui-icon-plus, .ui-icon-minus, .ui-icon-delete, .ui-icon-arrow-r,
+    .ui-icon-arrow-l, .ui-icon-arrow-u, .ui-icon-arrow-d, .ui-icon-check,
+    .ui-icon-gear, .ui-icon-refresh, .ui-icon-forward, .ui-icon-back,
+    .ui-icon-grid, .ui-icon-star, .ui-icon-alert, .ui-icon-info, .ui-icon-home,
+    .ui-icon-search, .ui-icon-searchfield:after, .ui-icon-checkbox-off,
+    .ui-icon-checkbox-on, .ui-icon-radio-off, .ui-icon-radio-on {
+      background-image: url(../machete/images/icons-36-white.png);
+      @include background-size(776px 18px);
+    }
+    .ui-icon-alt {
+      background-image: url(../machete/images/icons-36-black.png);
+    }
+  }
+
+  /* plus minus */
+  .ui-icon-plus {
+    background-position: 	-0 50%;
+  }
+  .ui-icon-minus {
+    background-position: 	-36px 50%;
+  }
+
+  /* delete/close */
+  .ui-icon-delete {
+    background-position: 	-72px 50%;
+  }
+
+  /* arrows */
+  .ui-icon-arrow-r {
+    background-position: 	-108px 50%;
+  }
+  .ui-icon-arrow-l {
+    background-position: 	-144px 50%;
+  }
+  .ui-icon-arrow-u {
+    background-position: 	-180px 50%;
+  }
+  .ui-icon-arrow-d {
+    background-position: 	-216px 50%;
+  }
+
+  /* misc */
+  .ui-icon-check {
+    background-position: 	-252px 50%;
+  }
+  .ui-icon-gear {
+    background-position: 	-288px 50%;
+  }
+  .ui-icon-refresh {
+    background-position: 	-324px 50%;
+  }
+  .ui-icon-forward {
+    background-position: 	-360px 50%;
+  }
+  .ui-icon-back {
+    background-position: 	-396px 50%;
+  }
+  .ui-icon-grid {
+    background-position: 	-432px 50%;
+  }
+  .ui-icon-star {
+    background-position: 	-468px 50%;
+  }
+  .ui-icon-alert {
+    background-position: 	-504px 50%;
+  }
+  .ui-icon-info {
+    background-position: 	-540px 50%;
+  }
+  .ui-icon-home {
+    background-position: 	-576px 50%;
+  }
+  .ui-icon-search,
+  .ui-icon-searchfield:after {
+    background-position: 	-612px 50%;
+  }
+  .ui-icon-checkbox-off {
+    background-position: 	-684px 50%;
+  }
+  .ui-icon-checkbox-on {
+    background-position: 	-648px 50%;
+  }
+  .ui-icon-radio-off {
+    background-position: 	-756px 50%;
+  }
+  .ui-icon-radio-on {
+    background-position: 	-720px 50%;
+  }
+
+
+  /* checks,radios */
+  .ui-checkbox .ui-icon {
+    @include border-radius(3px);
+  }
+  .ui-icon-checkbox-off,
+  .ui-icon-radio-off {
+    background-color: transparent;	
+  }
+  .ui-checkbox-on .ui-icon,
+  .ui-radio-on .ui-icon {
+    background-color: #4596ce;
+    /* NOTE: this hex should match the active state color. It's repeated here for cascade */
+  }
+
+  /* loading icon */
+  .ui-icon-loading {
+    background: url(../machete/images/ajax-loader.gif);
+    background-size: 46px 46px;
+  }
+
+
+  /* Button corner classes */
+  .ui-btn-corner-tl {
+    @include border-top-left-radius($button-radius);
+  }
+  .ui-btn-corner-tr {
+    @include border-top-right-radius($button-radius);
+  }
+  .ui-btn-corner-bl {
+    @include border-bottom-left-radius($button-radius);
+  }
+  .ui-btn-corner-br {
+    @include border-bottom-right-radius($button-radius);
+  }
+  .ui-btn-corner-top {
+    @include border-top-left-radius($button-radius);
+    @include border-top-right-radius($button-radius);
+  }
+  .ui-btn-corner-bottom {
+    @include border-bottom-left-radius($button-radius);
+    @include border-bottom-right-radius($button-radius);
+  }
+  .ui-btn-corner-right {
+    @include border-top-right-radius($button-radius);
+    @include border-bottom-right-radius($button-radius);
+  }
+  .ui-btn-corner-left {
+    @include border-top-left-radius($button-radius);
+    @include border-bottom-left-radius($button-radius);
+  }
+  .ui-btn-corner-all {
+    @include border-radius($button-radius);
+  }
+
+  /* radius clip workaround for cleaning up corner trapping */
+  .ui-corner-tl,
+  .ui-corner-tr,
+  .ui-corner-bl, 
+  .ui-corner-br,
+  .ui-corner-top,
+  .ui-corner-bottom, 
+  .ui-corner-right,
+  .ui-corner-left,
+  .ui-corner-all,
+  .ui-btn-corner-tl,
+  .ui-btn-corner-tr,
+  .ui-btn-corner-bl, 
+  .ui-btn-corner-br,
+  .ui-btn-corner-top,
+  .ui-btn-corner-bottom, 
+  .ui-btn-corner-right,
+  .ui-btn-corner-left,
+  .ui-btn-corner-all {
+    @include background-clip(padding-box);
+  }
+
+  /* Overlay / modal
+  -----------------------------------------------------------------------------------------------------------*/
+
+  .ui-overlay {
+    background: #666;
+    @include opacity(0.5);
+    position: absolute;
+    width: 100%;
+    height: 100%;
+  }
+  .ui-overlay-shadow {
+    @include box-shadow(0px 0px 12px rgba(0,0,0,.6));
+  }
+  .ui-shadow {
+    @include box-shadow(0px 1px 4px rgba(0,0,0,.3));
+  }
+
+  .ui-shadow-inset {
+    @include box-shadow(inset 0px 1px 4px	rgba(0,0,0,.2));
+  }
+
+  .ui-icon-shadow {
+    @include box-shadow(0px 1px 0 rgba(255,255,255,.4));
+  }
+
+  /* Focus state - set here for specificity (note: these classes are added by JavaScript) */
+
+  .ui-btn:focus {
+    outline: 0;
+  }
+
+  .ui-focus,
+  .ui-btn:focus {
+    @include box-shadow(0px 0px 12px #387bbe);
+  }
+
+  /* unset box shadow in browsers that don't do it right */
+
+  .ui-mobile-nosupport-boxshadow * {
+    @include box-shadow(none !important);
+  }
+
+  /* ...and bring back focus */
+  .ui-mobile-nosupport-boxshadow .ui-focus,
+  .ui-mobile-nosupport-boxshadow .ui-btn:focus {
+    outline-width: 1px;
+    outline-style: dotted;
+  }
+}

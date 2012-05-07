@@ -23,6 +23,7 @@
 (function ($) {
   // bind mobileinit and reconfigure jquery mobile defaults
   $(document).bind('mobileinit', function() {
+
     // Disable jQuery Mobile link and ajax handling
     $.extend($.mobile, {
       ajaxEnabled: false,
@@ -31,6 +32,8 @@
       pushStateEnabled: false,
       defaultPageTransition: 'none'
     });
+    $.mobile.buttonMarkup.hoverDelay = 0;
+    $.mobile.selectmenu.prototype.options.nativeMenu = false;
 
     // default configure header and toolbars to be fixed
     $.extend($.mobile.fixedtoolbar.prototype.options, {

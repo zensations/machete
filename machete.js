@@ -67,8 +67,11 @@
     }
   });
 
-  Machete.searching = function () {
-    $.mobile.showPageLoadingMsg('b', 'Loading ...');
+  Machete.searching = function (message) {
+    if (!message) {
+      message = 'Loading ...';
+    }
+    $.mobile.showPageLoadingMsg('c', message, false);
     overruleMsgHide = true;
   };
 
@@ -90,7 +93,7 @@
   /**
    * Handle all click events to provide jQuery mobile standard functionality.
    */
-  $(document).bind('click', function (event) {
+  $(document).bind('tap', function macheteRun(event) {
     if (transitioning) {
       event.preventDefault();
       return false;
@@ -103,6 +106,9 @@
       link = link.parentNode;
     }
     var target = $(link);
+    if (target.parents(':jqmData(role="dialog")').length > 0) {
+      return true;
+    }
     if (target.jqmData('rel') === 'back') {
       history.back();
       event.preventDefault();
@@ -153,6 +159,7 @@
       stack = stack.slice(0, stackindex);
       stack.push({fragment: Backbone.history.fragment, transition: transition});
     }
+
 
     var cpopts = _.extend({
       transition: transition,
@@ -205,8 +212,8 @@
       $page.append(boots.el);
     }
 
-    // adjust header and footer to be persistent
-    $.mobile.pageContainer.append($page);
+    $.mobile.pageContainer.prepend($page);
+    $page.page();
     $.mobile.changePage($page, cpopts);
   };
 
@@ -284,20 +291,15 @@
 
     _deferredBriefing: function(briefing) {
       this.briefing = briefing;
-      var effect = ((new Date()).getTime() - this.timer) > 100;
       var content = $(_growMustache(this.mustache).render(briefing));
       this.$el.empty();
       this.$el.append(content.children());
-      if (effect) {
-        this.$el.hide();
-      }
+      this.$el.hide();
       this.delegateEvents();
       this.render();
       this.$el.trigger('create');
-      if (effect) {
-        this.$el.fadeIn();
-      }
-      $(document).trigger('machetebriefed');
+      $(document).trigger('machetebriefed', this);
+      this.$el.fadeIn();
     },
 
     /**
@@ -384,7 +386,7 @@
    * Simple content page with an important warning.
    */
   Machete.Vest = Machete.Gear.extend({
-    template: '<div data-role="content"><p>You just messed with the wrong mexican &hellip;</p></div>',
+    template: '<div data-role="content"></div>',
     /**
      * Provide default values for the bandana.
      */
@@ -457,7 +459,7 @@
     }
   });
 
-  $(document).bind('machetebriefed', function(doc, gear) {
+  function refreshBandana(gear) {
     if(gear && _.has(gear, 'bandana') && _.isFunction(gear.bandana)) {
       Machete.bandana.set(_.extend({
         title: 'Machete',
@@ -465,6 +467,17 @@
         text: false,
         icon: false
       }, gear.bandana(), {back: (stackindex > 0)}));
+    }
+  }
+
+  $(document).bind('machetebriefed', function(doc, gear) {
+    refreshBandana(gear);
+  });
+
+  $(document).bind('pagehide', function(event, ui){
+    var vest = $(':jqmData(role="content")', ui.nextPage);
+    if (vest.length > 0 && vest[0].Gear) {
+      refreshBandana(vest[0].Gear);
     }
   });
 
@@ -522,7 +535,7 @@
    */
   var BootsDisplay = Machete.Gear.extend({
     collection: Machete.boots,
-    mustache: '<div data-role="footer" data-position="fixed" data-id="machete-boots"><div data-role="navbar"><ul></ul></div></div>',
+    mustache: '<div data-role="footer" id="boots" data-position="fixed" data-id="machete-boots"><div data-role="navbar"><ul></ul></div></div>',
     render: function() {
       var list = this.$('ul');
       this.collection.each(function(model) {
@@ -536,7 +549,7 @@
    * Bootdisplay, rendering one boot and listening to active-changes.
    */
   BootDisplay = Machete.Gear.extend({
-    mustache: '<li><a href="#{{route}}">{{text}}</a></li>',
+    mustache: '<li><a data-icon="{{icon}}" data-iconpos="notext" href="#{{route}}">{{text}}</a></li>',
     events: {
       'change:active @model': 'refreshActive',
       'click a': 'resetStack'
@@ -620,7 +633,7 @@
 
   // Delete unused pages if they are not marked as dom-cached
   $(document).bind('pageshow', function(event, ui) {
-    if ($(ui.prevPage).attr('data-dom-cache') !== 'true') {
+    if ($(ui.prevPage).attr('data-role') === 'page' && $(ui.prevPage).attr('data-dom-cache') !== 'true') {
       ui.prevPage.remove();
     }
   });
